@@ -1,0 +1,413 @@
+create table r_enum_values();
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100),
+    mobile varchar(15),
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255),
+    role_id int,
+    otp int,
+    secret longtext,
+    flag ENUM(0,1,2) default 0,
+    status ENUM(0,1,2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+create table users_audit (
+    user_audit_id int PRIMARY KEY AUTO_INCREMENT,
+    deleted_user_id int,
+    deleted_username VARCHAR(100),
+    deleted_mobile varchar(15),
+    deleted_email VARCHAR(100) UNIQUE,
+    deleted_role_id int,
+    deleted_status ENUM(0,1,2) DEFAULT 0,
+    deleted_by_user_id int,
+    created_at    DATETIME,
+    deleted_at    DATETIME     NOT NULL,
+    deleted_by    VARCHAR(100) NOT NULL
+);
+
+delimiter $$
+ create trigger after_delete_user
+after DELETE on users
+for each ROW
+BEGIN
+insert into users_audit (
+    deleted_user_id, deleted_username, deleted_mobile, deleted_email, deleted_role_id, deleted_status, 
+    deleted_by_user_id, created_at, deleted_at, deleted_by
+) VALUES (
+old.user_id, old.username, old.mobile, old.email, old.role_id, old.status,
+    old.user_id, now(), DATETIME(), 
+)
+END $$;
+delimiter;
+
+--  company table to manage company data
+CREATE TABLE companies (
+    company_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_name VARCHAR(150),
+    gstin VARCHAR(20),
+    state VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- company user tables
+CREATE TABLE user_companies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    company_id INT,
+    role ENUM('OWNER','MANAGER','STAFF'),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+);
+
+-- item group table
+CREATE TABLE item_groups (
+    group_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    group_name VARCHAR(100),
+    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+);
+
+--  manage HSN/SAC codes in items
+CREATE TABLE items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    group_id INT,
+    item_name VARCHAR(150),
+    sku VARCHAR(50),
+    item_type ENUM('GOODS','SERVICE'),
+    hsn_code VARCHAR(10),
+    sac_code VARCHAR(10),
+    gst_percent DECIMAL(5,2),
+    min_stock INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (company_id) REFERENCES companies(company_id),
+    FOREIGN KEY (group_id) REFERENCES item_groups(group_id)
+);
+
+                                                -- add parties / customers / venders
+CREATE TABLE parties (
+    party_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    party_type ENUM('CUSTOMER','VENDOR'),
+    name VARCHAR(150),
+    gstin VARCHAR(20),
+    state VARCHAR(100),
+    phone VARCHAR(20),
+    address TEXT,
+    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+);
+
+                                                    --- sales master ----------
+CREATE TABLE sales (
+    sale_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    customer_id INT,
+
+    invoice_no VARCHAR(50),
+    sale_date DATE,
+
+    supply_type ENUM('INTRA','INTER'),
+
+    subtotal DECIMAL(12,2),
+    cgst DECIMAL(12,2),
+    sgst DECIMAL(12,2),
+    igst DECIMAL(12,2),
+    grand_total DECIMAL(12,2),
+
+    status ENUM('PENDING','PAID','PARTIAL') DEFAULT 'PENDING',
+
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+                                             -----       sales items table ----------------
+CREATE TABLE sale_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sale_id INT,
+    item_id INT,
+
+    quantity INT,
+    rate DECIMAL(10,2),
+
+    hsn_sac_code VARCHAR(10),
+    gst_percent DECIMAL(5,2),
+
+    cgst DECIMAL(10,2),
+    sgst DECIMAL(10,2),
+    igst DECIMAL(10,2),
+
+    total DECIMAL(12,2)
+);
+
+                               ----- PURCHASE MODULE ----------------
+                               -- purchase master table ------
+CREATE TABLE purchases (
+    purchase_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    vendor_id INT,
+    bill_no VARCHAR(50),
+    purchase_date DATE,
+    subtotal DECIMAL(12,2),
+    tax_total DECIMAL(12,2),
+    grand_total DECIMAL(12,2),
+    payment_status ENUM('PENDING','PAID','PARTIAL'),
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+												--- purchase items table ----
+CREATE TABLE purchase_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    purchase_id INT,
+    item_id INT,
+    quantity INT,
+    rate DECIMAL(10,2),
+    gst_percent DECIMAL(5,2),
+    gst_amount DECIMAL(10,2),
+    total DECIMAL(12,2)
+);
+
+                                         -- Write-off Master --- 
+                                         
+CREATE TABLE writeoffs (
+    writeoff_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    reason VARCHAR(255),
+    writeoff_date DATE,
+    total_loss DECIMAL(12,2),
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);                                         
+
+                                     -- write off items tables----
+CREATE TABLE writeoff_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    writeoff_id INT,
+    item_id INT,
+    quantity INT,
+    rate DECIMAL(10,2),
+    total DECIMAL(12,2)
+);
+
+                                            -- MASTER TRANSACTION TABLE (VERY IMPORTANT)
+
+CREATE TABLE transactions (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    transaction_type ENUM('SALE','PURCHASE','WRITEOFF'),
+    party_id INT NULL,
+    transaction_date DATE,
+    reference_no VARCHAR(50),
+    total_amount DECIMAL(12,2),
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (company_id) REFERENCES companies(company_id),
+    FOREIGN KEY (party_id) REFERENCES parties(party_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+                                                      -- transaction items 
+CREATE TABLE transaction_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    transaction_id INT,
+    item_id INT,
+    quantity INT,
+    rate DECIMAL(10,2),
+    gst_percent DECIMAL(5,2),
+    gst_amount DECIMAL(10,2),
+    total DECIMAL(12,2),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+    FOREIGN KEY (item_id) REFERENCES items(item_id)
+);
+
+                                               -- Deadstock Transactions
+CREATE TABLE deadstock_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    transaction_id INT,
+    item_id INT,
+    last_movement_date DATE,
+    is_deadstock TINYINT DEFAULT 0,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+    FOREIGN KEY (item_id) REFERENCES items(item_id)
+);
+
+                                                     -- Deadstock Movement Log
+CREATE TABLE deadstock_movements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id INT,
+    company_id INT,
+    movement_type ENUM('IN','OUT','WRITEOFF'),
+    quantity INT,
+    ref_transaction_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+                                              -- Payments Table  ----
+                                              
+CREATE TABLE payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    payment_type ENUM('RECEIVED','PAID'),
+    reference_type ENUM('SALE','PURCHASE'),
+    reference_id INT,
+    amount DECIMAL(12,2),
+    payment_mode ENUM('CASH','BANK','UPI'),
+    payment_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);                                              
+
+                                                 --  All Triggers -----
+                                              -- prucahse trigger for transaction
+DELIMITER $$
+
+CREATE TRIGGER trg_purchase_deadstock
+AFTER INSERT ON transaction_items
+FOR EACH ROW
+BEGIN
+    DECLARE t_type VARCHAR(20);
+
+    SELECT transaction_type INTO t_type
+    FROM transactions
+    WHERE transaction_id = NEW.transaction_id;
+
+    IF t_type = 'PURCHASE' THEN
+        INSERT INTO deadstock_movements (
+            item_id, movement_type, quantity, ref_transaction_id
+        )
+        VALUES (NEW.item_id, 'IN', NEW.quantity, NEW.transaction_id);
+    END IF;
+END$$
+
+DELIMITER ;
+                                     -- purchase trigger on deadstock movement----
+-- Purchase → Add Stock                                     
+CREATE TRIGGER trg_purchase_stock
+AFTER INSERT ON purchase_items
+FOR EACH ROW
+BEGIN
+    INSERT INTO deadstock_movements
+    (item_id, movement_type, quantity, ref_transaction_id)
+    VALUES (NEW.item_id, 'IN', NEW.quantity, NEW.purchase_id);
+END;
+
+                                                      -- sale trigger for transaction
+       
+CREATE TRIGGER trg_sale_deadstock
+AFTER INSERT ON transaction_items
+FOR EACH ROW
+BEGIN
+    DECLARE t_type VARCHAR(20);
+
+    SELECT transaction_type INTO t_type
+    FROM transactions
+    WHERE transaction_id = NEW.transaction_id;
+
+    IF t_type = 'SALE' THEN
+        INSERT INTO deadstock_movements (
+            item_id, movement_type, quantity, ref_transaction_id
+        )
+        VALUES (NEW.item_id, 'OUT', NEW.quantity, NEW.transaction_id);
+    END IF;
+END;
+
+										-- sale trigger for deadstock mevement --
+-- Sale → Reduce Stock                                        
+CREATE TRIGGER trg_sale_stock
+AFTER INSERT ON sale_items
+FOR EACH ROW
+BEGIN
+    INSERT INTO deadstock_movements
+    (item_id, movement_type, quantity, ref_transaction_id)
+    VALUES (NEW.item_id, 'OUT', NEW.quantity, NEW.sale_id);
+END;
+
+                                                          ------- write off trigger -------
+CREATE TRIGGER trg_writeoff_deadstock
+AFTER INSERT ON transaction_items
+FOR EACH ROW
+BEGIN
+    DECLARE t_type VARCHAR(20);
+    SELECT transaction_type INTO t_type
+    FROM transactions
+    WHERE transaction_id = NEW.transaction_id;
+    IF t_type = 'WRITEOFF' THEN
+        INSERT INTO deadstock_movements (
+            item_id, movement_type, quantity, ref_transaction_id
+        )
+        VALUES (NEW.item_id, 'WRITEOFF', NEW.quantity, NEW.transaction_id);
+    END IF;
+END;
+
+                                     -- trigger for writeoff_items--
+CREATE TRIGGER trg_writeoff_stock
+AFTER INSERT ON writeoff_items
+FOR EACH ROW
+BEGIN
+    INSERT INTO deadstock_movements
+    (item_id, movement_type, quantity, ref_transaction_id)
+    VALUES (NEW.item_id, 'WRITEOFF', NEW.quantity, NEW.writeoff_id);
+END;
+
+                                                     -- deadstock detection
+SELECT 
+    i.item_id,
+    i.item_name,
+    MAX(dm.created_at) AS last_movement
+FROM items i
+LEFT JOIN deadstock_movements dm 
+    ON i.item_id = dm.item_id
+GROUP BY i.item_id
+HAVING last_movement < CURDATE() - INTERVAL 90 DAY;
+
+-- STOCK CALCULATION
+SELECT 
+    item_id,
+    SUM(CASE 
+        WHEN movement_type='IN' THEN quantity
+        WHEN movement_type='OUT' THEN -quantity
+        WHEN movement_type='WRITEOFF' THEN -quantity
+    END) AS stock
+FROM deadstock_movements
+GROUP BY item_id;
+
+                                                                    -- reporting system ---
+  -- current stock----
+  SELECT 
+    item_id,
+    SUM(
+        CASE 
+            WHEN movement_type='IN' THEN quantity
+            ELSE -quantity
+        END
+    ) AS stock
+FROM deadstock_movements
+GROUP BY item_id;
+
+-- sales report -- 
+SELECT 
+    DATE(sale_date),
+    SUM(grand_total)
+FROM sales
+GROUP BY DATE(sale_date);
+
+-- deadstock report ---
+SELECT item_id, MAX(created_at)
+FROM deadstock_movements
+GROUP BY item_id
+HAVING MAX(created_at) < CURDATE() - INTERVAL 90 DAY;
+
+-- pending payement -- 
+
+SELECT s.sale_id, s.grand_total,
+COALESCE(SUM(p.amount),0) paid,
+(s.grand_total - COALESCE(SUM(p.amount),0)) pending
+FROM sales s
+LEFT JOIN payments p 
+    ON p.reference_id = s.sale_id 
+    AND p.reference_type='SALE'
+GROUP BY s.sale_id;
+
