@@ -417,3 +417,157 @@ LEFT JOIN payments p
     AND p.reference_type='SALE'
 GROUP BY s.sale_id;
 
+
+
+
+                                                                      -- indexing on the tables ------
+-- users and companies tables---
+
+CREATE INDEX idx_users_email ON users(email);
+
+CREATE INDEX idx_user_companies_user 
+ON user_companies(user_id);
+
+CREATE INDEX idx_user_companies_company 
+ON user_companies(company_id);
+
+                                          -- item group and items --------------
+
+CREATE INDEX idx_item_groups_company 
+ON item_groups(company_id);
+
+CREATE INDEX idx_items_company 
+ON items(company_id);
+
+CREATE INDEX idx_items_group 
+ON items(group_id);
+
+CREATE INDEX idx_items_hsn 
+ON items(hsn_code);
+
+CREATE INDEX idx_items_sac 
+ON items(sac_code);
+
+CREATE INDEX idx_items_type 
+ON items(item_type);
+
+                              ---------- parties / customers / venders tables -----------
+
+CREATE INDEX idx_parties_company 
+ON parties(company_id);
+
+CREATE INDEX idx_parties_type 
+ON parties(party_type);
+
+CREATE INDEX idx_parties_gstin 
+ON parties(gstin);
+
+                                --- sales table indexing -------------
+
+
+CREATE INDEX idx_sales_company 
+ON sales(company_id);
+
+CREATE INDEX idx_sales_customer 
+ON sales(customer_id);
+
+CREATE INDEX idx_sales_date 
+ON sales(sale_date);
+
+CREATE INDEX idx_sales_invoice 
+ON sales(invoice_no);
+
+                         ----- item sales --- 
+
+CREATE INDEX idx_sale_items_sale 
+ON sale_items(sale_id);
+
+CREATE INDEX idx_sale_items_item 
+ON sale_items(item_id);
+
+
+
+                  --- indexig of purchase ----
+CREATE INDEX idx_purchases_company 
+ON purchases(company_id);
+
+CREATE INDEX idx_purchases_vendor 
+ON purchases(vendor_id);
+
+CREATE INDEX idx_purchases_date 
+ON purchases(purchase_date);
+
+                    -------- purchase items indexing --------------
+
+CREATE INDEX idx_purchase_items_purchase 
+ON purchase_items(purchase_id);
+
+CREATE INDEX idx_purchase_items_item 
+ON purchase_items(item_id);
+
+
+            --- writeoffs tables indexing ------
+
+CREATE INDEX idx_writeoffs_company 
+ON writeoffs(company_id);
+
+CREATE INDEX idx_writeoffs_date 
+ON writeoffs(writeoff_date);
+
+           ------- write off items ------
+
+CREATE INDEX idx_writeoff_items_writeoff 
+ON writeoff_items(writeoff_id);
+
+CREATE INDEX idx_writeoff_items_item 
+ON writeoff_items(item_id);
+
+-- --- deadstock movement -------
+
+CREATE INDEX idx_dm_item 
+ON deadstock_movements(item_id);
+
+CREATE INDEX idx_dm_company 
+ON deadstock_movements(company_id);
+
+CREATE INDEX idx_dm_date 
+ON deadstock_movements(created_at);
+
+CREATE INDEX idx_dm_type 
+ON deadstock_movements(movement_type);
+
+CREATE INDEX idx_dm_item_date 
+ON deadstock_movements(item_id, created_at);
+
+                                                             --- payemt ------
+CREATE INDEX idx_payments_company 
+ON payments(company_id);
+
+CREATE INDEX idx_payments_ref 
+ON payments(reference_type, reference_id);
+
+CREATE INDEX idx_payments_date 
+ON payments(payment_date);
+
+                                                         --- stock query ---------
+
+
+CREATE INDEX idx_dm_item_type 
+ON deadstock_movements(item_id, movement_type);
+
+
+                                                        --- sales report ---------- 
+
+
+CREATE INDEX idx_sales_date_company 
+ON sales(company_id, sale_date);
+
+
+                                          --- gst report -----
+
+
+CREATE INDEX idx_sale_items_tax 
+ON sale_items(hsn_sac_code, gst_percent);
+
+CREATE INDEX idx_sales_cover 
+ON sales(company_id, sale_date, grand_total);
