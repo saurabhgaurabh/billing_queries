@@ -15,8 +15,8 @@ CREATE TABLE users (
     role_id int,
     otp int,
     secret longtext,
-    flag ENUM(0,1,2) default 0,
-    status ENUM(0,1,2) DEFAULT 0,
+    flag TINYINT DEFAULT 0,
+    status TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -27,29 +27,24 @@ create table users_audit (
     deleted_mobile varchar(15),
     deleted_email VARCHAR(100) UNIQUE,
     deleted_role_id int,
-    deleted_status ENUM(0,1,2) DEFAULT 0,
+    deleted_status TINYINT DEFAULT 0,
     deleted_by_user_id int,
     created_at    DATETIME,
     deleted_at    DATETIME     NOT NULL,
     deleted_by    VARCHAR(100) NOT NULL
 );
 
-delimiter $$
- create trigger after_delete_user
-after DELETE on users
-for each ROW
-BEGIN
-insert into users_audit (
-    deleted_user_id, deleted_username, deleted_mobile, deleted_email, deleted_role_id, deleted_status, 
-    deleted_by_user_id, created_at, deleted_at, deleted_by
-) VALUES (
-old.user_id, old.username, old.mobile, old.email, old.role_id, old.status,
-    old.user_id, now(), DATETIME(), 
-)
-END $$;
-delimiter;
+CREATE TRIGGER after_delete_user 
+AFTER DELETE ON users 
+FOR EACH ROW 
+BEGIN 
+INSERT INTO users_audit ( deleted_user_id, deleted_username, deleted_mobile, deleted_email, deleted_role_id,
+deleted_status, deleted_by_user_id, created_at, deleted_at, deleted_by ) VALUES (
+OLD.user_id, OLD.username, OLD.mobile, OLD.email, OLD.role_id, OLD.status, OLD.user_id, NOW(), NOW(), OLD.user_id
+);
+END;
 
---  company table to manage company data
+                                 --  company table to manage company data
 CREATE TABLE companies (
     company_id INT AUTO_INCREMENT PRIMARY KEY,
     company_name VARCHAR(150),
@@ -68,7 +63,9 @@ CREATE TABLE user_companies (
     FOREIGN KEY (company_id) REFERENCES companies(company_id)
 );
 
--- item group table
+
+
+                              -- item group table
 CREATE TABLE item_groups (
     group_id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT,
@@ -76,7 +73,7 @@ CREATE TABLE item_groups (
     FOREIGN KEY (company_id) REFERENCES companies(company_id)
 );
 
---  manage HSN/SAC codes in items
+                               --  manage HSN/SAC codes in items
 CREATE TABLE items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT,
@@ -99,6 +96,8 @@ CREATE TABLE parties (
     company_id INT,
     party_type ENUM('CUSTOMER','VENDOR'),
     name VARCHAR(150),
+    mobile varchar(15),
+    email varchar(40),
     gstin VARCHAR(20),
     state VARCHAR(100),
     phone VARCHAR(20),
@@ -111,20 +110,15 @@ CREATE TABLE sales (
     sale_id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT,
     customer_id INT,
-
     invoice_no VARCHAR(50),
     sale_date DATE,
-
     supply_type ENUM('INTRA','INTER'),
-
     subtotal DECIMAL(12,2),
     cgst DECIMAL(12,2),
     sgst DECIMAL(12,2),
     igst DECIMAL(12,2),
     grand_total DECIMAL(12,2),
-
     status ENUM('PENDING','PAID','PARTIAL') DEFAULT 'PENDING',
-
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -134,22 +128,20 @@ CREATE TABLE sale_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sale_id INT,
     item_id INT,
-
     quantity INT,
     rate DECIMAL(10,2),
-
     hsn_sac_code VARCHAR(10),
     gst_percent DECIMAL(5,2),
-
     cgst DECIMAL(10,2),
     sgst DECIMAL(10,2),
     igst DECIMAL(10,2),
-
     total DECIMAL(12,2)
 );
 
                                ----- PURCHASE MODULE ----------------
+
                                -- purchase master table ------
+
 CREATE TABLE purchases (
     purchase_id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT,
@@ -187,7 +179,7 @@ CREATE TABLE writeoffs (
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );                                         
-
+ 
                                      -- write off items tables----
 CREATE TABLE writeoff_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -215,6 +207,7 @@ CREATE TABLE transactions (
     FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 
+
                                                       -- transaction items 
 CREATE TABLE transaction_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -229,6 +222,7 @@ CREATE TABLE transaction_items (
     FOREIGN KEY (item_id) REFERENCES items(item_id)
 );
 
+
                                                -- Deadstock Transactions
 CREATE TABLE deadstock_transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -241,6 +235,7 @@ CREATE TABLE deadstock_transactions (
     FOREIGN KEY (item_id) REFERENCES items(item_id)
 );
 
+
                                                      -- Deadstock Movement Log
 CREATE TABLE deadstock_movements (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -251,6 +246,7 @@ CREATE TABLE deadstock_movements (
     ref_transaction_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
                                               -- Payments Table  ----
                                               
@@ -265,6 +261,7 @@ CREATE TABLE payments (
     payment_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );                                              
+
 
                                                  --  All Triggers -----
                                               -- prucahse trigger for transaction
@@ -288,9 +285,12 @@ BEGIN
     END IF;
 END$$
 
-DELIMITER ;
+
+
                                      -- purchase trigger on deadstock movement----
--- Purchase → Add Stock                                     
+-- Purchase → Add Stock  
+
+DELIMITER $$
 CREATE TRIGGER trg_purchase_stock
 AFTER INSERT ON purchase_items
 FOR EACH ROW
@@ -301,7 +301,8 @@ BEGIN
 END;
 
                                                       -- sale trigger for transaction
-       
+
+DELIMITER $$
 CREATE TRIGGER trg_sale_deadstock
 AFTER INSERT ON transaction_items
 FOR EACH ROW
@@ -320,8 +321,10 @@ BEGIN
     END IF;
 END;
 
+
 										-- sale trigger for deadstock mevement --
--- Sale → Reduce Stock                                        
+-- Sale → Reduce Stock   
+DELIMITER $$
 CREATE TRIGGER trg_sale_stock
 AFTER INSERT ON sale_items
 FOR EACH ROW
@@ -331,7 +334,10 @@ BEGIN
     VALUES (NEW.item_id, 'OUT', NEW.quantity, NEW.sale_id);
 END;
 
+
                                                           ------- write off trigger -------
+
+DELIMITER $$
 CREATE TRIGGER trg_writeoff_deadstock
 AFTER INSERT ON transaction_items
 FOR EACH ROW
@@ -348,7 +354,10 @@ BEGIN
     END IF;
 END;
 
+
+
                                      -- trigger for writeoff_items--
+DELIMITER $$
 CREATE TRIGGER trg_writeoff_stock
 AFTER INSERT ON writeoff_items
 FOR EACH ROW
@@ -357,6 +366,7 @@ BEGIN
     (item_id, movement_type, quantity, ref_transaction_id)
     VALUES (NEW.item_id, 'WRITEOFF', NEW.quantity, NEW.writeoff_id);
 END;
+                         // done over here  /////
 
                                                      -- deadstock detection
 SELECT 
@@ -571,3 +581,156 @@ ON sale_items(hsn_sac_code, gst_percent);
 
 CREATE INDEX idx_sales_cover 
 ON sales(company_id, sale_date, grand_total);
+
+
+-- sales summery --
+
+SELECT 
+    s.invoice_no,
+    s.sale_date,
+    p.name AS customer_name,
+    s.subtotal,
+    s.cgst,
+    s.sgst,
+    s.igst,
+    s.grand_total
+FROM sales s
+JOIN parties p ON p.party_id = s.customer_id
+WHERE s.sale_date BETWEEN '2026-05-01' AND '2026-05-31';
+
+--  Query: Tax Summary (GSTR-1)
+
+SELECT 
+    SUM(subtotal) AS taxable_value,
+    SUM(cgst) AS total_cgst,
+    SUM(sgst) AS total_sgst,
+    SUM(igst) AS total_igst,
+    SUM(grand_total) AS total_invoice_value
+FROM sales
+WHERE sale_date BETWEEN '2026-05-01' AND '2026-05-31';
+
+
+--- Query: HSN-wise Sales Report
+
+SELECT 
+    si.hsn_sac_code,
+    SUM(si.quantity) AS total_qty,
+    SUM(si.total) AS taxable_value,
+    SUM(si.cgst) AS cgst,
+    SUM(si.sgst) AS sgst,
+    SUM(si.igst) AS igst
+FROM sale_items si
+JOIN sales s ON s.sale_id = si.sale_id
+WHERE s.sale_date BETWEEN '2026-05-01' AND '2026-05-31'
+GROUP BY si.hsn_sac_code;
+
+--  GSTR-2 (Purchase Report –  What you purchased)
+
+
+SELECT 
+    pu.bill_no,
+    pu.purchase_date,
+    pa.name AS vendor_name,
+    pu.subtotal,
+    pu.tax_total,
+    pu.grand_total
+FROM purchases pu
+JOIN parties pa ON pa.party_id = pu.vendor_id
+WHERE pu.purchase_date BETWEEN '2026-05-01' AND '2026-05-31';
+
+
+--- Query: ITC Summary  ---
+
+SELECT 
+    SUM(pi.total) AS taxable_value,
+    SUM(pi.gst_amount) AS total_itc
+FROM purchase_items pi
+JOIN purchases pu ON pu.purchase_id = pi.purchase_id
+WHERE pu.purchase_date BETWEEN '2026-05-01' AND '2026-05-31';
+
+
+-- Query: HSN-wise Purchase Report -- 
+SELECT 
+    i.hsn_code,
+    SUM(pi.quantity) AS total_qty,
+    SUM(pi.total) AS taxable_value,
+    SUM(pi.gst_amount) AS total_tax
+FROM purchase_items pi
+JOIN items i ON i.item_id = pi.item_id
+JOIN purchases pu ON pu.purchase_id = pi.purchase_id
+WHERE pu.purchase_date BETWEEN '2026-05-01' AND '2026-05-31'
+GROUP BY i.hsn_code;
+
+
+-- GSTR-3B (Final GST Payable) -- GST Payable = Output Tax - Input Tax
+
+SELECT 
+    sales_tax.total_output_tax,
+    purchase_tax.total_input_tax,
+    (sales_tax.total_output_tax - purchase_tax.total_input_tax) AS gst_payable
+FROM 
+(
+    SELECT 
+        SUM(cgst + sgst + igst) AS total_output_tax
+    FROM sales
+    WHERE sale_date BETWEEN '2026-05-01' AND '2026-05-31'
+) AS sales_tax,
+(
+    SELECT 
+        SUM(gst_amount) AS total_input_tax
+    FROM purchase_items pi
+    JOIN purchases pu ON pu.purchase_id = pi.purchase_id
+    WHERE pu.purchase_date BETWEEN '2026-05-01' AND '2026-05-31'
+) AS purchase_tax;
+
+
+
+-- B2B vs B2C Sales (Important for GST Filing) --
+
+SELECT 
+    CASE 
+        WHEN p.gstin IS NOT NULL THEN 'B2B'
+        ELSE 'B2C'
+    END AS sale_type,
+    COUNT(*) AS total_invoices,
+    SUM(s.grand_total) AS total_value
+FROM sales s
+JOIN parties p ON p.party_id = s.customer_id
+GROUP BY sale_type;
+
+
+-- State-wise GST Report -- 
+
+SELECT 
+    p.state,
+    SUM(s.grand_total) AS total_sales,
+    SUM(s.igst) AS igst,
+    SUM(s.cgst) AS cgst,
+    SUM(s.sgst) AS sgst
+FROM sales s
+JOIN parties p ON p.party_id = s.customer_id
+GROUP BY p.state;
+
+
+-- Pending Payments Report -- 
+SELECT 
+    invoice_no,
+    grand_total,
+    status
+FROM sales
+WHERE status != 'PAID';
+
+
+-- Payment vs Invoice Matching --
+
+SELECT 
+    s.invoice_no,
+    s.grand_total,
+    IFNULL(SUM(p.amount), 0) AS paid_amount,
+    (s.grand_total - IFNULL(SUM(p.amount), 0)) AS balance
+FROM sales s
+LEFT JOIN payments p 
+    ON p.reference_id = s.sale_id 
+    AND p.reference_type = 'SALE'
+GROUP BY s.sale_id;
+
