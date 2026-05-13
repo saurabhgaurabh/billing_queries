@@ -1,9 +1,10 @@
 CREATE TABLE r_enum_values (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    enum_id INT ,
     enum_code VARCHAR(50),
     enum_value VARCHAR(140),
     is_active TINYINT DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	primary key(enum_id,enum_code)
 );
 
 CREATE TABLE users (
@@ -44,83 +45,66 @@ OLD.user_id, OLD.username, OLD.mobile, OLD.email, OLD.role_id, OLD.status, OLD.u
 );
 END;
 
-                                 --  company table to manage company data
-CREATE TABLE companies (
-    company_id INT AUTO_INCREMENT PRIMARY KEY,
-    company_name VARCHAR(150),
-    gstin VARCHAR(20),
-    state VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- company user tables
-CREATE TABLE user_companies (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    company_id INT,
-    role ENUM('OWNER','MANAGER','STAFF'),
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    FOREIGN KEY (company_id) REFERENCES companies(company_id)
-);
-
-
-
-                              -- item group table
+                                 --  item group
 CREATE TABLE item_groups (
     group_id INT AUTO_INCREMENT PRIMARY KEY,
-    company_id INT,
-    group_name VARCHAR(100),
-    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+    group_name VARCHAR(100)
 );
 
                                --  manage HSN/SAC codes in items
 CREATE TABLE items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
-    company_id INT,
     group_id INT,
     item_name VARCHAR(150),
     sku VARCHAR(50),
-    item_type ENUM('GOODS','SERVICE'),
+    item_type int,   /* mapped with r_enum_values */
     hsn_code VARCHAR(10),
     sac_code VARCHAR(10),
     gst_percent DECIMAL(5,2),
     min_stock INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(company_id),
     FOREIGN KEY (group_id) REFERENCES item_groups(group_id)
 );
 
-                                                -- add parties / customers / venders
-CREATE TABLE parties (
-    party_id INT AUTO_INCREMENT PRIMARY KEY,
-    company_id INT,
-    party_type ENUM('CUSTOMER','VENDOR'),
+                                              --  vendors
+CREATE TABLE vender (
+    vendor_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150),
     mobile varchar(15),
     email varchar(40),
     gstin VARCHAR(20),
-    state VARCHAR(100),
+    phone VARCHAR(20),
+    address TEXT,    
+    state VARCHAR(100)
+);
+
+                                                   --  Customer   ---
+
+CREATE TABLE customer (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150),
+    mobile varchar(15),
+    email varchar(40),
+    document_id VARCHAR(20),
     phone VARCHAR(20),
     address TEXT,
-    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+    state VARCHAR(100)
 );
 
                                                     --- sales master ----------
-CREATE TABLE sales (
-    sale_id INT AUTO_INCREMENT PRIMARY KEY,
-    company_id INT,
-    customer_id INT,
-    invoice_no VARCHAR(50),
-    sale_date DATE,
-    supply_type ENUM('INTRA','INTER'),
-    subtotal DECIMAL(12,2),
-    cgst DECIMAL(12,2),
-    sgst DECIMAL(12,2),
-    igst DECIMAL(12,2),
-    grand_total DECIMAL(12,2),
-    status ENUM('PENDING','PAID','PARTIAL') DEFAULT 'PENDING',
-    created_by INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE sales (    
+sale_id INT AUTO_INCREMENT PRIMARY KEY,
+customer_id INT,
+invoice_no VARCHAR(50),
+sold_at datetime,
+subtotal DECIMAL(12,2),
+cgst DECIMAL(12,2),
+sgst DECIMAL(12,2),
+igst DECIMAL(12,2),
+grand_total DECIMAL(12,2),
+status int   /* mapped with r_enum_values  */
+created_by INT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
                                              -----       sales items table ----------------
