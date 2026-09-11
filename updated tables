@@ -10,6 +10,7 @@ CREATE TABLE customers (
     mobile VARCHAR(15) NULL,
     phone VARCHAR(20) NULL,
     email VARCHAR(150) NULL,
+    amount decimal(10,2),
 
     -- GST / Tax / Identity
     gstin VARCHAR(15) NULL,
