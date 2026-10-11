@@ -103,6 +103,22 @@ CREATE TABLE vendors (
     INDEX idx_vendor_status (status)
 );
 
+                               --  manage HSN/SAC codes in items
+CREATE TABLE items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    item_name VARCHAR(150
+    hsn_code VARCHAR(10),
+    gst_percent DECIMAL(5,2),
+	new_mrp decimal(12,2),
+	old_mrp DECIMAL(12,2),
+	max_stock INT DEFAULT 0,
+    min_stock INT DEFAULT 0,
+	opening_balance decimal(12,2),
+	closing_balance decimal(12,2),
+    status TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES item_groups(group_id)
+);
 
                                                     --- sales master ----------
 CREATE TABLE sales (
