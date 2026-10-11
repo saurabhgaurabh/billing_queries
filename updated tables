@@ -102,3 +102,65 @@ CREATE TABLE vendors (
     INDEX idx_vendor_pan (pan),
     INDEX idx_vendor_status (status)
 );
+
+
+                                                    --- sales master ----------
+CREATE TABLE sales (
+    sale_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT,
+    invoice_no VARCHAR(50),
+    sold_at datetime,
+    subtotal DECIMAL(12,2),
+    cgst DECIMAL(12,2),
+    sgst DECIMAL(12,2),
+    igst DECIMAL(12,2),
+    grand_total DECIMAL(12,2),
+    status int   /* mapped with r_enum_values  */
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+                                             -----       sales items table ----------------
+CREATE TABLE sale_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sale_id INT,
+    item_id INT,
+    quantity INT,
+    rate DECIMAL(10,2),
+    hsn_sac_code VARCHAR(10),
+    gst_percent DECIMAL(5,2),
+    cgst DECIMAL(10,2),
+    sgst DECIMAL(10,2),
+    igst DECIMAL(10,2),
+    total DECIMAL(12,2)
+);
+
+                               ----- PURCHASE MODULE ----------------
+
+                               -- purchase master table ------
+
+CREATE TABLE purchases (
+    purchase_id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT,
+    vendor_id INT,
+    bill_no VARCHAR(50),
+    purchase_date DATE,
+    subtotal DECIMAL(12,2),
+    tax_total DECIMAL(12,2),
+    grand_total DECIMAL(12,2),
+    payment_status ENUM('PENDING','PAID','PARTIAL'),
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+												--- purchase items table ----
+CREATE TABLE purchase_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    purchase_id INT,
+    item_id INT,
+    quantity INT,
+    rate DECIMAL(10,2),
+    gst_percent DECIMAL(5,2),
+    gst_amount DECIMAL(10,2),
+    total DECIMAL(12,2)
+);
