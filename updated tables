@@ -106,11 +106,15 @@ CREATE TABLE vendors (
                                --  items table
 CREATE TABLE items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
-    item_name VARCHAR(150
+    item_name VARCHAR(150),
+description longtext,
+unit varchar(50),
     hsn_code VARCHAR(10),
     gst_percent DECIMAL(5,2),
 	new_mrp decimal(12,2),
 	old_mrp DECIMAL(12,2),
+purchase_price DECIMAL(12,2),
+sele_price DECIMAL(12,2),
 	max_stock INT DEFAULT 0,
     min_stock INT DEFAULT 0,
 	opening_balance decimal(12,2),
