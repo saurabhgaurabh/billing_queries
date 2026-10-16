@@ -1,0 +1,13 @@
+CREATE TABLE chat_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
+    sender ENUM('admin','customer') NOT NULL,
+    message TEXT NOT NULL,
+    message_type ENUM('text','image','file') DEFAULT 'text',
+    is_read TINYINT DEFAULT 0,
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+    ON UPDATE CURRENT_TIMESTAMP
+);
